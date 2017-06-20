@@ -2,6 +2,7 @@ package tc_test
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -101,4 +102,86 @@ func Test_ISOWeekCodec(t *testing.T) {
 	if _, err := tc.ISOWeekCodec.UnmarshalTime("2017-99"); err != tc.InvalidWeekNumberError {
 		t.Error("Invalid error")
 	}
+}
+
+func Test_Round(t *testing.T) {
+	now := time.Now()
+	var actual, expect time.Time
+	actual = tc.Round(now, time.Minute)
+	expect = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), 0, 0, now.Location())
+	if actual != expect {
+		t.Errorf("Invalid round %s\n%s\n%s", time.Minute, actual, expect)
+	}
+	actual = tc.Round(now, time.Nanosecond)
+	expect = now
+	if actual != expect {
+		t.Errorf("Invalid round %s\n%s\n%s", time.Nanosecond, actual, expect)
+	}
+
+}
+func Test_UnixTimeCodec(t *testing.T) {
+	for _, unit := range []time.Duration{time.Second, time.Minute, time.Hour} {
+		c := tc.UnixTimeCodec(unit)
+		now := time.Now()
+
+		seconds := tc.Round(now, time.Second).Unix()
+
+		expect := strconv.FormatInt(seconds-(seconds%int64(unit/time.Second)), 10)
+		actual := c.MarshalTime(now)
+		if actual != expect {
+			t.Errorf("Invalid marshal %s\n%s\n%s", unit, actual, expect)
+		}
+		tm, err := c.UnmarshalTime(actual)
+		if err != nil {
+			t.Error(err)
+		}
+		var etm time.Time
+		switch unit {
+		case time.Hour:
+			etm = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())
+		case time.Minute:
+			etm = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), 0, 0, now.Location())
+		default:
+			etm = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), tc.Round(now, time.Second).Second(), 0, now.Location())
+		}
+		if tm != etm {
+			t.Errorf("Invalid unmarshal %s\n%s\n%s", unit, tm, etm)
+
+		}
+
+	}
+
+}
+func Test_UnixMillisTimeCodec(t *testing.T) {
+	for _, unit := range []time.Duration{time.Second, time.Minute, time.Hour} {
+		c := tc.UnixMillisTimeCodec(unit)
+		now := time.Now()
+
+		ms := tc.UnixMillis(tc.Round(now, time.Millisecond))
+
+		expect := strconv.FormatInt(ms-(ms%int64(unit/time.Millisecond)), 10)
+		actual := c.MarshalTime(now)
+		if actual != expect {
+			t.Errorf("Invalid marshal %s\n%s\n%s", unit, actual, expect)
+		}
+		tm, err := c.UnmarshalTime(actual)
+		if err != nil {
+			t.Error(err)
+		}
+		var etm time.Time
+		switch unit {
+		case time.Hour:
+			etm = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())
+		case time.Minute:
+			etm = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), 0, 0, now.Location())
+		default:
+			etm = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), tc.Round(now, time.Millisecond).Second(), 0, now.Location())
+		}
+		if tm != etm {
+			t.Errorf("Invalid unmarshal %s\n%s\n%s", unit, tm, etm)
+
+		}
+
+	}
+
 }

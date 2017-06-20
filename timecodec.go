@@ -96,3 +96,49 @@ var MillisTimeCodec = NewTimeCodec(func(t time.Time) string {
 
 	return t, err
 })
+
+func Round(tm time.Time, unit time.Duration) time.Time {
+	if unit <= time.Nanosecond {
+		return tm
+	}
+	n := tm.UnixNano()
+	return time.Unix(0, n-(n%int64(unit)))
+}
+
+func UnixMillisTimeCodec(step time.Duration) TimeCodec {
+	if step < time.Millisecond {
+		step = time.Millisecond
+	}
+	unit := int64(step / time.Millisecond)
+
+	return NewTimeCodec(func(t time.Time) string {
+		ms := UnixMillis(Round(t, time.Millisecond))
+		return strconv.FormatInt(ms-(ms%unit), 10)
+	}, func(s string) (t time.Time, err error) {
+		var n int64
+		if n, err = strconv.ParseInt(s, 10, 64); err != nil {
+			return
+		}
+		return time.Unix(n/1000, (n%1000)*int64(time.Millisecond)), nil
+	})
+
+}
+
+func UnixTimeCodec(step time.Duration) TimeCodec {
+	if step < time.Second {
+		step = time.Second
+	}
+	unit := int64(step / time.Second)
+
+	return NewTimeCodec(func(t time.Time) string {
+		s := Round(t, time.Second).Unix()
+		return strconv.FormatInt(s-(s%unit), 10)
+	}, func(s string) (t time.Time, err error) {
+		var n int64
+		if n, err = strconv.ParseInt(s, 10, 64); err != nil {
+			return
+		}
+		return time.Unix(n, 0), nil
+	})
+
+}
